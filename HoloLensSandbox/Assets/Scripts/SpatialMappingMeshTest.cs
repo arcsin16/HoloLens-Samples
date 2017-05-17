@@ -11,6 +11,10 @@ public class SpatialMappingMeshTest : MonoBehaviour
 {
     public Material SelectedMeshMaterial;
     private Text debugText;
+    private int frameCount;
+    private float prevTime;
+    private float fps;
+    private bool calcUVs;
 
     void OnEnable()
     {
@@ -25,6 +29,10 @@ public class SpatialMappingMeshTest : MonoBehaviour
     // Use this for initialization
     void Start()
     {
+        this.frameCount = 0;
+        this.prevTime = 0;
+        this.calcUVs = false;
+
         this.debugText = FindObjectOfType<Text>();
     }
 
@@ -34,39 +42,50 @@ public class SpatialMappingMeshTest : MonoBehaviour
         var cp = Camera.main.transform.position;
         var cf = Camera.main.transform.forward;
 
-        RaycastHit hitInfo;
-        if (Physics.Raycast(cp, cf, out hitInfo))
-        {
-            var meshes = SpatialMappingManager.Instance.GetSurfaceObjects();
-            for (int i = 0; i < meshes.Count; i++)
-            {
-                if (meshes[i].Filter.mesh != null && meshes[i].Filter.mesh.bounds.Contains(hitInfo.point))
-                {
-                    meshes[i].Renderer.sharedMaterial = this.SelectedMeshMaterial;
-                }
-                else if (meshes[i].Renderer.sharedMaterial == this.SelectedMeshMaterial)
-                {
-                    meshes[i].Renderer.sharedMaterial = SpatialMappingManager.Instance.SurfaceMaterial;
-                }
-            }
-        }
+        //RaycastHit hitInfo;
+        //if (Physics.Raycast(cp, cf, out hitInfo))
+        //{
+        //    var meshes = SpatialMappingManager.Instance.GetSurfaceObjects();
+        //    for (int i = 0; i < meshes.Count; i++)
+        //    {
+        //        if (meshes[i].Filter.mesh != null && meshes[i].Filter.mesh.bounds.Contains(hitInfo.point))
+        //        {
+        //            meshes[i].Renderer.sharedMaterial = this.SelectedMeshMaterial;
+        //        }
+        //        else if (meshes[i].Renderer.sharedMaterial == this.SelectedMeshMaterial)
+        //        {
+        //            meshes[i].Renderer.sharedMaterial = SpatialMappingManager.Instance.SurfaceMaterial;
+        //        }
+        //    }
+        //}
+        calcUVs = !calcUVs;
     }
 
     // Update is called once per frame
     void Update()
     {
+        ++frameCount;
+        float time = Time.realtimeSinceStartup - prevTime;
+
+        if (time >= 0.5f)
+        {
+            this.fps = frameCount / time;
+        }
+
         var meshes = SpatialMappingManager.Instance.GetMeshes();
         if (this.debugText != null)
         {
+            StringBuilder sb = new StringBuilder();
             if (meshes != null)
             {
-                StringBuilder sb = new StringBuilder();
+                sb.AppendLine("FPS: " + fps);
                 sb.AppendLine("MeshCount: " + meshes.Count);
                 for (int i = 0; i < meshes.Count; i++)
                 {
                     var mesh = meshes[i];
-                    sb.AppendFormat(" [{0}] CENTER={1}, SIAZE={2}", i, mesh.bounds.center, mesh.bounds.size);
+                    sb.AppendFormat(" [{0}] CENTER={1}, SIZE={2}, VERTICES={3}", i, mesh.bounds.center, mesh.bounds.size, mesh.vertices.Length);
 
+                    if(calcUVs)
                     {
                         sb.AppendFormat("UpdateUVs");
                         Vector3[] vertices = mesh.vertices;
@@ -97,12 +116,14 @@ public class SpatialMappingMeshTest : MonoBehaviour
                     }
                     sb.AppendLine();
                 }
-                this.debugText.text = sb.ToString();
             }
             else
             {
-                this.debugText.text = "Mesh Count: null";
+                sb.AppendLine("FPS: " + fps);
+                sb.AppendLine("Mesh Count: null");
             }
+
+            this.debugText.text = sb.ToString();
         }
     }
 }
